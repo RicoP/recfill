@@ -9,6 +9,11 @@ var pixelHeight = canvas.height;
 
 var mouse = {x:0,y:0,down:false};
 
+
+for(var i = 0; i < pixelData.length; i+=4) {
+ pixelData[i+3] = 255;
+}
+
 function setPixel(x,y,color) {
  var i = 4 * ( x + y * pixelWidth );
  pixelData[i+0] = (color >> 16) & 0xFF;
@@ -30,8 +35,8 @@ function getPixel(x,y) {
 }
 
 function brush(x,y,color, size) {
- for(var dx = size; dx--;) {
-  for(var dy = size; dy--;) {
+ for(var dx = -size; dx < size; dx++) {
+  for(var dy = -size; dy < size; dy++) {
    setPixel(x + dx, y + dy, color);
   }
  }
@@ -147,7 +152,26 @@ function seedfill(x, y, nv) {
   } while(x <= x2);
  }
 }
-setTimeout(function() {
- seedfill(400,300,0xFF0000);
+var btnRec = document.createElement("button");
+var btnSeed = document.createElement("button");
+btnRec.innerHTML = "recursive";
+btnSeed.innerHTML = "seedfill";
+btnRec.onclick = function() {
+ try {
+  fill(400,300,0xFF0000);
+ } catch(e) {
+  alert(e.message || e);
+ }
  flush();
-}, 5000);
+};
+btnSeed.onclick = function() {
+ try {
+  seedfill(400,300,0xFF0000);
+ } catch(e) {
+  alert(e.message || e);
+ }
+ flush();
+};
+document.body.appendChild(btnRec);
+document.body.appendChild(btnSeed);
+flush();
