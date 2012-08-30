@@ -87,112 +87,93 @@ function fill(x,y,newcolor) {
 	recfill(x,y,oldcolor,newcolor); 
 }
 
-function seedfill(x, y, nv, win, pixelread, pixelwrite) {
-	var start, x1, x2, dy;
-	var ov;
+function seedfill(x, y, nv) {
+	"use strict"; 
 
-	function Segment(x,xl,xr,dy) {
-		this.x = x; 
-		this.xl = xl; 
-		this.xr = xr; 
-		this.dy = dy; 
-	};
+	function Segment(y,xl,xr,dy) {
+		this.y=y;
+		this.xl=xl;
+		this.xr=xr; 
+		this.dy=dy;
+	}	
 
-	var max = 10000;
-	var stack = new Array /* of Segment*/ (max); 
-	var sp=0;
+	var pixelread = getPixel; 
+	var pixelwrite = setPixel; 
 
-	for(var i = max; i--;) {
+	var win = { x0 : 0, y0 : 0, x1 : canvas.width - 1, y1 : canvas.height - 1 }; 		
+
+	var MAX = 10000; 
+
+	#define PUSH(Y, XL, XR, DY)	/* push new segment on stack */ \
+    if (sp<MAX && Y+(DY)>=win.y0 && Y+(DY)<=win.y1) \
+    {_sp = stack[sp]; _sp.y = Y; _sp.xl = XL; _sp.xr = XR; _sp.dy = DY; sp++;}
+
+	#define POP(Y, XL, XR, DY)	/* pop segment off stack */ \
+    {_sp = stack[sp]; sp--; Y = _sp.y+(DY = _sp.dy); XL = _sp.xl; XR = _sp.xr;}
+
+	var l=0,x1=0,x2=0,dy=0;
+	var stack = new Array(MAX); /* of Segment */ 	
+	var sp = 0; 
+
+	for(var i = 0; i !== MAX; i++) 
 		stack[i] = new Segment(0,0,0,0); 
-	}
-	
-	function push(y,xl,xr,dy) {
-		if(sp < max && y + dy >= 0 && y + dy < win.width) {
-			stack[sp].y = y; 
-			stack[sp].xl = xl; 
-			stack[sp].xr = xr; 
-			stack[sp].dy = dy; 
-		}
-	}
 
-	function pop(segment) {
-		var s = stack[--sp]; 
-		segment.dy = s.dy = dy; 
-		segment.y = s.y + s.dy; 
-		segment.xl = s.xl;
-		segment.xr = s.xr; 
-	}
+	var _sp = stack[0]; /* current Segment */ 
 
-	//BEGIN procedure fill 
-	ov = pixelread(x,y); 
-	if(ov === nv || x<0 || y<0 || x>=win.width || y>=win.height) {
+	var ov = pixelread(x,y); 
+	if(ov === nv || x < win.x0 || x > win.x1 || y < win.y0 || y>win.y1) {
 		return; 
 	}
 
-	push(y,x,x,1); 
-	push(y+1,x,x,-1); 
+	PUSH(y  ,x, x, 1);
+	PUSH(y+1,x, x,-1); 
 
-	var currentSegment = new Segment(0,0,0,0); 
-
-	while(sp > 0) {
-		pop(segment); 
-		y = segment.y; 
-		x1 = segment.xl;
-		x2 = segment.xr; 
-		dy = segment.dy; 
-		x = x1; 
-		while(x >= 0 && pixelread(x,y) === ov) {
+	while(sp > 1) {
+		POP(y,x1,x2,dy); 
+		for(x=x1; x >= win.x0 && pixelread(x,y) === ov; x--) {
 			pixelwrite(x,y,nv); 
-			x--;
+		} 
+
+		if(x >= x1) {
+			for(x++; x<=x2 && pixelread(x,y) !== ov; x++)
+				;
+			l = x; 
+			if(x > x2) continue; 
+		} 
+		else {
+			l = x+1; 
+
+			if(l<x1)  { 
+				PUSH(y,l,x1-1, -dy);
+			}
+			x = x1+1; 
 		}
-
-		if(x >= xl) goto skip; 
-
-		start = x+1;
-
-		if(start < x1) {
-			push(y, start, x1-1, -dy); 			
-		}
-
-		x=x1+1;
-
-		for(;;) {
-			while( x < win.widtd && pixelread(x,y) === ov) {
+				
+		do {
+			for(; x <= win.x1 && pixelread(x,y) === ov; x++) {
 				pixelwrite(x,y,nv); 
-				x++;
 			}
 
-			push(y, start, x-1, dy); 
+			PUSH(y,l,x-1,dy); 
+
 			if(x > x2+1) {
-				push(y, x2+1, x-1, dy); // ???!!!
-				
-			skip: 
-				
-				x++; 
-				while( x <= x2 && pixelread(x,y) !== ov) {
-					x++; 					
-				}
-
-				start = x; 
-
+				PUSH(y, x2+1, x-1, -dy); 
 			}
-		}
 
+			for(x++; x<=x2 && pixelread(x,y) !== ov; x++)
+			{}
+
+			l = x; 
+		} while(x <= x2); 
 	}
+
+
+	#undef PUSH
+	#undef POP
 }
 
-
-/*
-
-*/
-
-setTimeout(function() {
-
-
-	try { 	
-		fill(400,300,0xFF0000); 
-	} catch(e) {
-	}
-		
+setTimeout(function() { 
+	seedfill(400,300,0xFF0000); 
 	flush(); 
-}, 5000);
+}, 5000); 
+

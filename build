@@ -1,0 +1,3 @@
+#/bin/sh
+cpp fill.js -P -undef -nostdinc -Wtrigraphs -fdollars-in-identifiers > final.js
+
